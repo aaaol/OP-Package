@@ -1,0 +1,46 @@
+name: Advanced Repository Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation type (sync|update)'
+        required: true
+        default: 'sync'
+      packages:
+        description: 'Package names (comma separated)'
+        required: false
+
+jobs:
+  repository-ops:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      
+    - name: Setup scripts
+      run: |
+        chmod +x ./scripts/*
+        mkdir -p logs
+        
+    - name: Run operation
+      run: |
+        case "${{ github.event.inputs.operation }}" in
+          sync)
+            ./scripts/sync_repo.sh "[AUTO] Scheduled sync"
+            ;;
+          update)
+            ./scripts/package_manager.sh "${{ github.event.inputs.packages }}"
+            ;;
+        esac
+      env:
+        SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+        
+    - name: Archive logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: operation-logs
+        path: logs/
